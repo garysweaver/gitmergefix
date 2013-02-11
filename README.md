@@ -37,7 +37,9 @@ To do this just use:
 
     gitmergefix "some_branch" "  <version>1.2.3-SNAPSHOT</version>" "  <version>1.2.4-SNAPSHOT</version>" "  <version>something_else</version>"
 
-Notice the white space. Really what this does is to exactly replace merge conflicts that are a result of the exact two lines you specify with the line you specify. That is all it does, but it may save you a lot of time with mergetool!
+Notice the white space. Really what this does is to exactly replace merge conflicts that are a result of the exact two lines you specify with the line you specify, and if there that file or any other file is marked as having a conflict but doesn't, then it does a `git add` on those files.
+
+That is all it does, but it may save you some time vs. using mergetool or having to construct and ugly-looking regex.
 
 ### License
 
