@@ -42,3 +42,5 @@ Notice the white space. Really what this does is to exactly replace merge confli
 ### License
 
 Copyright (c) 2013 Gary S. Weaver, released under the [MIT license][lic].
+
+[lic]: http://github.com/garysweaver/gitmergetool/blob/master/LICENSE
