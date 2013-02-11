@@ -1,0 +1,82 @@
+#!/usr/bin/ruby -w
+
+# use at your own risk, like:
+#
+# gitmergefix 'branch_name' 'mine' 'theirs' 'what to use'
+#
+# so if a conflict looks like:
+# <<<<<<< HEAD
+#    <version>1.2.3-SNAPSHOT</version>
+# =======
+#    <version>1.2.4-SNAPSHOT</version>
+# >>>>>>> something_else
+#
+# then if you want to use "   <version>1.2.5-SNAPSHOT</version>" you do:
+# gitmergefix "something_else" "   <version>1.2.3-SNAPSHOT</version>" "   <version>1.2.4-SNAPSHOT</version>" "   <version>1.2.5-SNAPSHOT</version>"
+# and it will go through all git conflicted files and replace:
+# <<<<<<< HEAD
+#    <version>1.2.3-SNAPSHOT</version>
+# =======
+#    <version>1.2.4-SNAPSHOT</version>
+# >>>>>>> something_else
+# with:
+#    <version>1.2.5-SNAPSHOT</version>
+
+require 'fileutils'
+require 'tempfile'
+
+puts
+
+files = `git diff --name-only --diff-filter=U`.split("\n")
+
+unless ARGV[0] && ARGV[1] && ARGV[2] && ARGV[3]
+  puts "usage: gitmergefix 'branch_name' 'mine' 'theirs' 'what to use'"
+  puts
+  if files.length > 0
+    puts "Files with merge conflicts:"
+    puts
+    puts files.join("\n")
+  else
+    puts "There are no merge conflicts"
+  end
+  puts
+  exit 1
+end
+
+if files.length == 0
+  puts "There are no merge conflicts"
+  puts
+  exit 0
+end
+
+branch_name = ARGV[0]
+head_changes = ARGV[1]
+branch_changes = ARGV[2]
+replacement_string = ARGV[3]
+
+files.each do |pathname|
+  File.open(pathname) { |source_file|
+    contents = source_file.read
+    if contents['<<<<<<< HEAD']
+      to_replace = "<<<<<<< HEAD\n#{head_changes}\n=======\n#{branch_changes}\n>>>>>>> #{branch_name}"
+      if contents.gsub!(to_replace, replacement_string)
+        tmp = Tempfile.new('gitmergefix')
+        File.open(tmp.path, "w+") { |f| f.write(contents) }
+        FileUtils.mv(tmp.path, pathname)
+        puts "Fixed #{pathname}"
+        unless contents['<<<<<<< HEAD']
+          # resolve if this was last conflict
+          `git add "#{pathname}"`
+        end
+      else        
+        puts "Couldn't find #{to_replace} in:\n#{contents}"
+      end
+    else
+      # resolve if no conflicts
+      `git add "#{pathname}"`
+    end
+  }
+end
+
+puts
+
