@@ -1,7 +1,11 @@
 gitmergefix
 =====
 
-Fixes a certain kind of git merge conflict easily via a ruby script that can be run at command-line.
+Fixes simple but volumnous git merge conflicts easily via a ruby script that can be run at command-line in *nix.
+
+This is not a replacement for git mergetool or other more complex merge conflict resolution tools, but may do better than those tools when you have a lot of the same conflicts.
+
+Backup your repo and all other files before using; Use at your own risk.
 
 ### Requirements
 
@@ -9,17 +13,31 @@ Requires Ruby and *nix. To see whether you have ruby installed, try:
 
     ruby -v
 
-### Usage
+### Setup
 
-Put the directory containing the gitmergefix script on your path, and then do:
-
-    gitmergefix
-
-That should show a line indicating usage followed by all of the files with git conflicts in the current git repo. If it doesn't make it executable:
+If needed, make it executable:
 
     chmod +x gitmergefix
 
-Lets say you have the following conflicts in all of your files:
+### Usage
+
+#### List
+
+Put the directory containing the gitmergefix script on your path, and then do:
+
+    gitmergefix list
+
+That should list files with git conflicts in the current git repo (it runs `git diff --name-only --diff-filter=U`). 
+
+#### Resolve
+
+To git add conflicted files that don't contain '<<<<<<< HEAD':
+
+    gitmergefix resolve
+
+#### Replace
+
+Lets say you have the following conflict in some or all of your files:
 
     <<<<<<< HEAD
       <version>1.2.3-SNAPSHOT</version>
@@ -31,15 +49,13 @@ And you'd like to replace these with:
 
       <version>something_else</version>
 
-and then git add that file if all conflicts are resolved.
+And finally you'd like to git add all files that no longer have conflicts.
 
 To do this just use:
 
     gitmergefix "some_branch" "  <version>1.2.3-SNAPSHOT</version>" "  <version>1.2.4-SNAPSHOT</version>" "  <version>something_else</version>"
 
 Notice the white space. Really what this does is to exactly replace merge conflicts that are a result of the exact two lines you specify with the line you specify, and if there that file or any other file is marked as having a conflict but doesn't, then it does a `git add` on those files.
-
-That is all it does, but it may save you some time vs. using mergetool or having to construct a regex.
 
 ### License
 

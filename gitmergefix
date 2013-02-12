@@ -1,26 +1,52 @@
 #!/usr/bin/ruby -w
 
-# use at your own risk, like:
+# gitmergefix
+# Copyright (c) 2013 Gary S. Weaver, released under the MIT license:
+# http://github.com/garysweaver/gitmergetool/blob/master/LICENSE
+# https://github.com/garysweaver/gitmergefix
+#
+# Fixes simple but volumnous git merge conflicts easily via a ruby script that can be run at command-line in *nix.
+#
+# Use at your own risk!
+#
+# This will git add all conflicted files that don't contain '<<<<<<< HEAD':
+#
+# gitmergefix resolve
+#
+# 
+# This shows what files have conflicts by calling: git diff --name-only --diff-filter=U 
+#
+# gitmergefix list
+#
+#
+# This replaces conflict of mine and theirs with what to use for conflicts with branch_name, and git adds all resolved files:
 #
 # gitmergefix 'branch_name' 'mine' 'theirs' 'what to use'
 #
-# so if a conflict looks like:
+# S,o if a conflict looks like:
 # <<<<<<< HEAD
 #    <version>1.2.3-SNAPSHOT</version>
 # =======
 #    <version>1.2.4-SNAPSHOT</version>
 # >>>>>>> something_else
 #
-# then if you want to use "   <version>1.2.5-SNAPSHOT</version>" you do:
+# Then if you want to use "   <version>1.2.5-SNAPSHOT</version>" you do:
+#
 # gitmergefix "something_else" "   <version>1.2.3-SNAPSHOT</version>" "   <version>1.2.4-SNAPSHOT</version>" "   <version>1.2.5-SNAPSHOT</version>"
+#
 # and it will go through all git conflicted files and replace:
 # <<<<<<< HEAD
 #    <version>1.2.3-SNAPSHOT</version>
 # =======
 #    <version>1.2.4-SNAPSHOT</version>
 # >>>>>>> something_else
+#
 # with:
+#
 #    <version>1.2.5-SNAPSHOT</version>
+#
+# and it will git add all conflict resolved files whether the script changed them or not.
+#
 
 require 'fileutils'
 require 'tempfile'
@@ -29,17 +55,38 @@ puts
 
 files = `git diff --name-only --diff-filter=U`.split("\n")
 
-unless ARGV[0] && ARGV[1] && ARGV[2] && ARGV[3]
-  puts "usage: gitmergefix 'branch_name' 'mine' 'theirs' 'what to use'"
-  puts
-  if files.length > 0
-    puts "Files with merge conflicts:"
-    puts
-    puts files.join("\n")
-  else
-    puts "There are no merge conflicts"
+resolve_only = false
+if !(ARGV[1] && ARGV[2] && ARGV[3])
+  if ARGV[0] == 'list'
+    if files.length > 0
+      puts "Files with merge conflicts:"
+      puts
+      puts files.join("\n")
+      puts
+      exit 1
+    else
+      puts "There are no merge conflicts"
+      puts
+      exit 0
+    end
+  elsif ARGV[0] == 'resolve'
+    resolve_only = true
   end
+end
+
+unless resolve_only || (ARGV[0] && ARGV[1] && ARGV[2] && ARGV[3])
+  puts "usage:"
   puts
+  puts "To git add all resolved files:"
+  puts "gitmergefix resolve"
+  puts
+  puts "To list all git conflicts:"
+  puts "gitmergefix list"
+  puts
+  puts "To replace conflict of mine and theirs with what to use for conflicts with branch_name, and git add all resolved files:"
+  puts "gitmergefix 'branch_name' 'mine' 'theirs' 'what to use'"
+  puts
+
   exit 1
 end
 
@@ -58,18 +105,20 @@ files.each do |pathname|
   File.open(pathname) { |source_file|
     contents = source_file.read
     if contents['<<<<<<< HEAD']
-      to_replace = "<<<<<<< HEAD\n#{head_changes}\n=======\n#{branch_changes}\n>>>>>>> #{branch_name}"
-      if contents.gsub!(to_replace, replacement_string)
-        tmp = Tempfile.new('gitmergefix')
-        File.open(tmp.path, "w+") { |f| f.write(contents) }
-        FileUtils.mv(tmp.path, pathname)
-        puts "Fixed #{pathname}"
-        unless contents['<<<<<<< HEAD']
-          # resolve if this was last conflict
-          `git add "#{pathname}"`
+      unless resolve_only
+        to_replace = "<<<<<<< HEAD\n#{head_changes}\n=======\n#{branch_changes}\n>>>>>>> #{branch_name}"
+        if contents.gsub!(to_replace, replacement_string)
+          tmp = Tempfile.new('gitmergefix')
+          File.open(tmp.path, "w+") { |f| f.write(contents) }
+          FileUtils.mv(tmp.path, pathname)
+          puts "Fixed #{pathname}"
+          unless contents['<<<<<<< HEAD']
+            # resolve if this was last conflict
+            `git add "#{pathname}"`
+          end
+        else        
+          puts "Couldn't find #{to_replace} in:\n#{contents}"
         end
-      else        
-        puts "Couldn't find #{to_replace} in:\n#{contents}"
       end
     else
       # resolve if no conflicts
